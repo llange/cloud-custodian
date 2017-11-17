@@ -2602,7 +2602,22 @@ class Lifecycle(BucketActionBase):
 
 @filters.register('bucket-encryption')
 class BucketEncryption(ValueFilter):
-    """Filter bucket-encryption for a bucket"""
+    """Filters for S3 buckets that have bucket-encryption
+
+    :example
+
+        .. code-block: yaml
+
+            policies:
+              - name: s3-bucket-encryption
+                resource: s3
+                region: us-east-1
+                filters:
+                  - type: bucket-encryption
+                    key: ApplyServerSideEncryptionByDefault.SSEAlgorithm
+                    value: AES256
+
+    """
     schema = type_schema('bucket-encryption', rinherit=ValueFilter.schema)
 
     permissions = ('s3:GetBucketEncryption',)
