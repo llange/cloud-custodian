@@ -121,6 +121,71 @@ class BucketMetrics(BaseTest):
             'AWS/S3.NumberOfObjects.Average' in resources[0]['c7n.metrics'])
 
 
+class BucketEncryption(BaseTest):
+
+    def test_s3_bucket_encryption_filter(self):
+        bname = 'c7n-bucket-with-encryption'
+        self.patch(s3.S3, 'executor_factory', MainThreadExecutor)
+        self.patch(s3, 'S3_AUGMENT_TABLE', [])
+
+        session_factory = self.replay_flight_data('test_s3_bucket_encryption_filter')
+
+        client = session_factory().client('s3')
+        client.create_bucket(Bucket=bname)
+        self.addCleanup(client.delete_bucket, Bucket=bname)
+
+        enc = {
+            'Rules': [{
+                'ApplyServerSideEncryptionByDefault': {
+                    'SSEAlgorithm': 'AES256'
+                }
+            }]
+        }
+
+        client.put_bucket_encryption(Bucket=bname, ServerSideEncryptionConfiguration=enc)
+
+        p = self.load_policy({
+            'name': 's3-enc',
+            'resource': 's3',
+            'filters': [
+                {
+                    'type': 'bucket-encryption',
+                    'key': 'ApplyServerSideEncryptionByDefault.SSEAlgorithm',
+                    'value': 'AES256'
+                }
+            ]
+        }, session_factory=session_factory)
+        resources = p.run() or []
+        self.assertEqual(len(resources), 1)
+        self.assertEqual(resources[0]['Name'], bname)
+
+    def test_s3_bucket_encryption_filter_absent(self):
+        bname = 'c7n-bucket-without-encryption'
+        self.patch(s3.S3, 'executor_factory', MainThreadExecutor)
+        self.patch(s3, 'S3_AUGMENT_TABLE', [])
+
+        session_factory = self.replay_flight_data('test_s3_bucket_encryption_filter_absent')
+
+        client = session_factory().client('s3')
+        client.create_bucket(Bucket=bname)
+        self.addCleanup(client.delete_bucket, Bucket=bname)
+
+        p = self.load_policy({
+            'name': 's3-enc',
+            'resource': 's3',
+            'filters': [
+                {
+                    'type': 'bucket-encryption',
+                    'key': 'ApplyServerSideEncryptionByDefault',
+                    'value': 'absent'
+                }
+            ]
+        }, session_factory=session_factory)
+        resources = p.run()
+        self.assertEqual(len(resources), 1)
+        self.assertEqual(resources[0]['Name'], bname)
+
+
 class BucketInventory(BaseTest):
 
     def test_s3_set_encrypted_inventory_sses3(self):

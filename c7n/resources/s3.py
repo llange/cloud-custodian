@@ -2600,6 +2600,43 @@ class Lifecycle(BucketActionBase):
             Bucket=bucket['Name'], LifecycleConfiguration={'Rules': config})
 
 
+@filters.register('bucket-encryption')
+class BucketEncryption(ValueFilter):
+    """Filter bucket-encryption for a bucket"""
+    schema = type_schema('bucket-encryption', rinherit=ValueFilter.schema)
+
+    permissions = ('s3:GetBucketEncryption',)
+
+    def process(self, buckets, event=None):
+        results = []
+        with self.executor_factory(max_workers=2) as w:
+            futures = {w.submit(self.process_bucket, b): b for b in buckets}
+            for future in as_completed(futures):
+                b = futures[future]
+                try:
+                    if future.result():
+                        results.append(b)
+                except Exception as e:
+                    self.log.error("Message: %s Bucket: %s", e,
+                                   b['Name'])
+        return results
+
+    def process_bucket(self, b):
+        if 'c7n:bucket-encryption' not in b:
+            client = bucket_client(local_session(self.manager.session_factory), b)
+            try:
+                rules = client.get_bucket_encryption(
+                    Bucket=b['Name']).get('ServerSideEncryptionConfiguration',
+                                          []).get('Rules', [])
+                b['c7n:bucket-encryption'] = rules
+                for i in b['c7n:bucket-encryption']:
+                    return self.match(i)
+            except ClientError as e:
+                if e.response['Error']['Code'] == 'ServerSideEncryptionConfigurationNotFoundError':
+                    b['c7n:bucket-encryption'] = []
+                    return self.match([])
+
+
 @actions.register('set-bucket-encryption')
 class SetBucketEncryption(BucketActionBase):
     """Action enables default encryption on S3 buckets
