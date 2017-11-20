@@ -150,8 +150,7 @@ class BucketEncryption(BaseTest):
             'filters': [
                 {
                     'type': 'bucket-encryption',
-                    'key': 'ApplyServerSideEncryptionByDefault.SSEAlgorithm',
-                    'value': 'AES256'
+                    'crypto': 'AES256'
                 }
             ]
         }, session_factory=session_factory)
