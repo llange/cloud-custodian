@@ -2649,12 +2649,12 @@ class BucketEncryption(Filter):
         try:
             client = bucket_client(local_session(self.manager.session_factory), b)
             be = client.get_bucket_encryption(Bucket=b['Name'])
+            b['c7n:bucket-encryption'] = be
         except ClientError as e:
             if e.response['Error']['Code'] != 'ServerSideEncryptionConfigurationNotFoundError':
                 raise
 
         rules = be.get('ServerSideEncryptionConfiguration', []).get('Rules', [])
-        b['c7n:bucket-encryption'] = be
 
         for sse in rules:
             if self.filter_bucket(sse):
