@@ -158,32 +158,6 @@ class BucketEncryption(BaseTest):
         self.assertEqual(len(resources), 1)
         self.assertEqual(resources[0]['Name'], bname)
 
-    def test_s3_bucket_encryption_filter_absent(self):
-        bname = 'c7n-bucket-without-encryption'
-        self.patch(s3.S3, 'executor_factory', MainThreadExecutor)
-        self.patch(s3, 'S3_AUGMENT_TABLE', [])
-
-        session_factory = self.replay_flight_data('test_s3_bucket_encryption_filter_absent')
-
-        client = session_factory().client('s3')
-        client.create_bucket(Bucket=bname)
-        self.addCleanup(client.delete_bucket, Bucket=bname)
-
-        p = self.load_policy({
-            'name': 's3-enc',
-            'resource': 's3',
-            'filters': [
-                {
-                    'type': 'bucket-encryption',
-                    'key': 'ApplyServerSideEncryptionByDefault',
-                    'value': 'absent'
-                }
-            ]
-        }, session_factory=session_factory)
-        resources = p.run()
-        self.assertEqual(len(resources), 1)
-        self.assertEqual(resources[0]['Name'], bname)
-
 
 class BucketInventory(BaseTest):
 
