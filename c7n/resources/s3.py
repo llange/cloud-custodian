@@ -2601,7 +2601,7 @@ class Lifecycle(BucketActionBase):
 
 
 @filters.register('bucket-encryption')
-class BucketEncryption(ValueFilter):
+class BucketEncryption(Filter):
     """Filters for S3 buckets that have bucket-encryption
 
     :example
@@ -2609,16 +2609,25 @@ class BucketEncryption(ValueFilter):
         .. code-block: yaml
 
             policies:
-              - name: s3-bucket-encryption
+              - name: s3-bucket-encryption-AES2556
                 resource: s3
                 region: us-east-1
                 filters:
                   - type: bucket-encryption
-                    key: ApplyServerSideEncryptionByDefault.SSEAlgorithm
-                    value: AES256
+                    crypto: AES256
+              - name: s3-bucket-encryption-KMS
+                resource: s3
+                region: us-east-1
+                filters
+                  - type: bucket-encryption
+                    crypto: aws:kms
+                    key: 1234abcd-12ab-34cd-56ef-1234567890ab
 
     """
-    schema = type_schema('bucket-encryption', rinherit=ValueFilter.schema)
+    schema = type_schema('bucket-encryption',
+                         required=['crypto'],
+                         crypto={'type': 'string', 'enum': ['AES256', 'aws:kms']},
+                         key={'type': 'string'})
 
     permissions = ('s3:GetBucketEncryption',)
 
@@ -2637,19 +2646,30 @@ class BucketEncryption(ValueFilter):
         return results
 
     def process_bucket(self, b):
-        if 'c7n:bucket-encryption' not in b:
+        try:
             client = bucket_client(local_session(self.manager.session_factory), b)
-            try:
-                rules = client.get_bucket_encryption(
-                    Bucket=b['Name']).get('ServerSideEncryptionConfiguration',
-                                          []).get('Rules', [])
-                b['c7n:bucket-encryption'] = rules
-                for i in b['c7n:bucket-encryption']:
-                    return self.match(i)
-            except ClientError as e:
-                if e.response['Error']['Code'] == 'ServerSideEncryptionConfigurationNotFoundError':
-                    b['c7n:bucket-encryption'] = []
-                    return self.match([])
+            be = client.get_bucket_encryption(Bucket=b['Name'])
+        except ClientError as e:
+            if e.response['Error']['Code'] != 'ServerSideEncryptionConfigurationNotFoundError':
+                raise
+
+        rules = be.get('ServerSideEncryptionConfiguration', []).get('Rules', [])
+        b['c7n:bucket-encryption'] = be
+
+        for sse in rules:
+            if self.filter_bucket(sse):
+                return True
+
+    def filter_bucket(self, sse):
+        crypto = self.data.get('crypto', 'AES256')
+        key = self.data.get('key')
+        rule = sse.get('ApplyServerSideEncryptionByDefault')
+        algo = rule.get('SSEAlgorithm')
+
+        if crypto == 'AES256' and algo == 'AES256':
+            return True
+        elif crypto == 'aws:kms' and algo == 'aws:kms' and rule.get('KMSMasterKeyID') == key:
+            return True
 
 
 @actions.register('set-bucket-encryption')
