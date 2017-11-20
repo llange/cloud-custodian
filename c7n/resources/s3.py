@@ -2609,7 +2609,7 @@ class BucketEncryption(Filter):
         .. code-block: yaml
 
             policies:
-              - name: s3-bucket-encryption-AES2556
+              - name: s3-bucket-encryption-AES256
                 resource: s3
                 region: us-east-1
                 filters:
