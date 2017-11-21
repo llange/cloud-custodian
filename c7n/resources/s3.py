@@ -2678,6 +2678,7 @@ class BucketEncryption(Filter):
         client = local_session(self.manager.session_factory).client('kms', region_name=region)
         return client.describe_key(KeyId=key).get('KeyMetadata', {}).get('Arn')
 
+
 @actions.register('set-bucket-encryption')
 class SetBucketEncryption(BucketActionBase):
     """Action enables default encryption on S3 buckets
