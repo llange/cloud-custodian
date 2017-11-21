@@ -2657,12 +2657,13 @@ class BucketEncryption(Filter):
         rules = be.get('ServerSideEncryptionConfiguration', []).get('Rules', [])
 
         for sse in rules:
-            if self.filter_bucket(sse):
+            if self.filter_bucket(b, sse):
                 return True
 
-    def filter_bucket(self, sse):
+    def filter_bucket(self, b, sse):
+        if 'key' in self.data:
+            key = self.resolve_key(b)
         crypto = self.data.get('crypto', 'AES256')
-        key = self.data.get('key')
         rule = sse.get('ApplyServerSideEncryptionByDefault')
         algo = rule.get('SSEAlgorithm')
 
@@ -2671,6 +2672,11 @@ class BucketEncryption(Filter):
         elif crypto == 'aws:kms' and algo == 'aws:kms' and rule.get('KMSMasterKeyID') == key:
             return True
 
+    def resolve_key(self, b):
+        region = get_region(b)
+        key = self.data.get('key')
+        client = local_session(self.manager.session_factory).client('kms', region_name=region)
+        return client.describe_key(KeyId=key).get('KeyMetadata', {}).get('Arn')
 
 @actions.register('set-bucket-encryption')
 class SetBucketEncryption(BucketActionBase):
@@ -2742,6 +2748,7 @@ class SetBucketEncryption(BucketActionBase):
         keys = {}
         regions = set()
         regions = {get_region(b) for b in buckets}
+
         key = self.data.get('key')
 
         if self.data.get('enabled', True) and key:
