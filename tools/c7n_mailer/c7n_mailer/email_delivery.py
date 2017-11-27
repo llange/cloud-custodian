@@ -67,6 +67,39 @@ PRIORITIES = {
     }
 }
 
+PRIORITIES = {
+    '1': {
+        'X-Priority': '1 (Highest)',
+        'X-MSMail-Priority': 'High',
+        'Priority': 'urgent',
+        'Importance': 'high',
+    },
+    '2': {
+        'X-Priority': '2 (High)',
+        'X-MSMail-Priority': 'High',
+        'Priority': 'urgent',
+        'Importance': 'high',
+    },
+    '3': {
+        'X-Priority': '3 (Normal)',
+        'X-MSMail-Priority': 'Normal',
+        'Priority': 'normal',
+        'Importance': 'normal',
+    },
+    '4': {
+        'X-Priority': '4 (Low)',
+        'X-MSMail-Priority': 'Low',
+        'Priority': 'non-urgent',
+        'Importance': 'low',
+    },
+    '5': {
+        'X-Priority': '5 (Lowest)',
+        'X-MSMail-Priority': 'Low',
+        'Priority': 'non-urgent',
+        'Importance': 'low',
+    }
+}
+
 
 class EmailDelivery(object):
 
