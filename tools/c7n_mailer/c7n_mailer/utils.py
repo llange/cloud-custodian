@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Copyright 2015-2017 Capital One Services, LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,6 +18,7 @@ import base64
 import json
 import os
 from datetime import datetime, timedelta
+import locale
 
 import jinja2
 from botocore.exceptions import ClientError
@@ -26,6 +28,7 @@ from ruamel import yaml
 
 
 def get_jinja_env(template_folders):
+    locale.setlocale(locale.LC_ALL, b'fr_FR.UTF-8')
     env = jinja2.Environment(trim_blocks=True, autoescape=False)
     env.filters['yaml_safe'] = yaml.safe_dump
     env.filters['date_time_format'] = date_time_format
@@ -107,8 +110,8 @@ def setup_defaults(config):
     config.setdefault('slack_webhook', None)
 
 
-def date_time_format(utc_str, tz_str='US/Eastern', format='%Y %b %d %H:%M %Z'):
-    return parser.parse(utc_str).astimezone(gettz(tz_str)).strftime(format)
+def date_time_format(utc_str, tz_str='Europe/Paris', format='%Y %b %d %H:%M %Z'):
+    return parser.parse(utc_str).astimezone(gettz(tz_str)).strftime(format).decode('utf-8')
 
 
 def get_date_time_delta(delta):
