@@ -95,7 +95,7 @@ does not need to be a valid policy itself - it can be any extract or part that y
 
 You can then include it in yaml policies.
 
-E.g. : create a file named ``tag_validation.yml`` with this content:
+E.g. : create a file named ``tag_validation.yaml`` with this content:
 
 .. code-block:: yaml
 
