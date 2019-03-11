@@ -370,6 +370,7 @@ class ValueFilter(Filter):
             'default': {'type': 'object'},
             'value_from': ValuesFrom.schema,
             'value': {'oneOf': [
+                {'type': 'object'},
                 {'type': 'array'},
                 {'type': 'string'},
                 {'type': 'boolean'},
@@ -560,7 +561,9 @@ class ValueFilter(Filter):
             return value, sentinel
         elif self.vtype == 'age':
             if not isinstance(sentinel, datetime.datetime):
-                sentinel = datetime.datetime.now(tz=tzutc()) - timedelta(sentinel)
+                if not isinstance(sentinel, dict):
+                    sentinel = dict(days=sentinel)
+                sentinel = datetime.datetime.now(tz=tzutc()) - timedelta(**sentinel)
             if isinstance(value, (str, int, float)):
                 try:
                     value = datetime.datetime.fromtimestamp(float(value)).replace(tzinfo=tzutc())
@@ -593,7 +596,9 @@ class ValueFilter(Filter):
         # to events in the past which age filtering allows for.
         elif self.vtype == 'expiration':
             if not isinstance(sentinel, datetime.datetime):
-                sentinel = datetime.datetime.now(tz=tzutc()) + timedelta(sentinel)
+                if not isinstance(sentinel, dict):
+                    sentinel = dict(days=sentinel)
+                sentinel = datetime.datetime.now(tz=tzutc()) + timedelta(**sentinel)
 
             if not isinstance(value, datetime.datetime):
                 try:
