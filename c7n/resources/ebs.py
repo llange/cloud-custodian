@@ -788,6 +788,84 @@ class CopyInstanceTags(BaseAction):
         return copy_tags
 
 
+@EBS.action_registry.register('stop-instance')
+class StopInstance(BaseAction):
+    """Stop instances attached to these volumes
+
+    - Only EBS having an attached instance will be considered
+    - Only EC2 in state 'running' are impacted (they will be stopped)
+    - May not be suitable for autoscaling groups (exclude them)
+    - May not be suitable for Spot instances (exclude them)
+
+    :example:
+
+    .. code-block:: yaml
+
+            policies:
+              - name: stop-unencrypted-ebs-instances
+                resource: ebs
+                filters:
+                  - Encrypted: false
+                actions:
+                  - stop-instance
+    """
+
+    schema = type_schema('stop-instance')
+
+    permissions = (
+        'ec2:StopInstances')
+
+    def process(self, volumes):
+        original_count = len(volumes)
+        volumes = [v for v in volumes if v['Attachments']]
+        if len(volumes) != original_count:
+            self.log.warning(
+                "ebs stop-instances action implicitly filtered from %d to %d attached volumes",
+                original_count, len(volumes))
+
+        # Group volumes by instance id
+        instance_vol_map = {}
+        for v in volumes:
+            instance_id = v['Attachments'][0]['InstanceId']
+            instance_vol_map.setdefault(instance_id, []).append(v)
+
+        # Query instances to find current instance state
+        self.instance_map = {
+            i['InstanceId']: i for i in
+            self.manager.get_resource_manager('ec2').get_resources(
+                list(instance_vol_map.keys()), cache=False)}
+
+        # And finally only keep running instances
+        instance_ids = [ instance_id for instance_id, instance in self.instance_map.items() if instance['State']['Name'] == 'running' ]
+
+        ec2_manager = self.manager.get_resource_manager('ec2')
+        ec2_client = local_session(self.manager.session_factory).client('ec2')
+
+        self.log.debug(
+            "ebs stop-instances stopping instances: %s using manager %s and client %s",
+            instance_ids, ec2_manager, ec2_client)
+
+        self._run_instances_op(
+            ec2_manager,
+            ec2_client.stop_instances,
+            instance_ids)
+
+    # This code is coming from ec2.py / Stop action
+    def _run_instances_op(self, manager, op, instance_ids):
+        while True:
+            try:
+                return manager.retry(op, InstanceIds=instance_ids)
+            except ClientError as e:
+                if e.response['Error']['Code'] == 'IncorrectInstanceState':
+                    msg = e.response['Error']['Message']
+                    e_instance_id = msg[msg.find("'") + 1:msg.rfind("'")]
+                    instance_ids.remove(e_instance_id)
+                    if not instance_ids:
+                        return
+                    continue
+                raise
+
+
 @EBS.action_registry.register('encrypt-instance-volumes')
 class EncryptInstanceVolumes(BaseAction):
     """Encrypt extant volumes attached to an instance
