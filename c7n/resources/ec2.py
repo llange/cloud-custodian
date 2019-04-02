@@ -336,6 +336,7 @@ class AttachedVolume(ValueFilter):
             return True
         return False
 
+
 @filters.register('termination-protected')
 class DisableApiTermination(Filter):
     """EC2 instances with ``disableApiTermination`` attribute set
