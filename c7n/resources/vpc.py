@@ -712,7 +712,7 @@ class SGUsage(Filter):
                 ("sg-perm-refs", self.get_sg_refs),
                 ('lambdas', self.get_lambda_sgs),
                 ("launch-configs", self.get_launch_config_sgs),
-                ("ecs", self.get_ecs_sgs),
+                ("ecs-periodic", self.get_ecs_periodic_sgs),
         ):
             sg_ids = scanner()
             new_refs = sg_ids.difference(used)
@@ -759,7 +759,7 @@ class SGUsage(Filter):
                         sg_ids.add(g['GroupId'])
         return sg_ids
 
-    def get_ecs_sgs(self):
+    def get_ecs_periodic_sgs(self):
         sg_ids = set()
         for event_rule_target in self.manager.get_resource_manager('event-rule-target').resources():
             if 'EcsParameters' in event_rule_target:
