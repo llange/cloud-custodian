@@ -712,6 +712,7 @@ class SGUsage(Filter):
                 ("sg-perm-refs", self.get_sg_refs),
                 ('lambdas', self.get_lambda_sgs),
                 ("launch-configs", self.get_launch_config_sgs),
+                ("ecs", self.get_ecs_sgs),
         ):
             sg_ids = scanner()
             new_refs = sg_ids.difference(used)
@@ -756,6 +757,18 @@ class SGUsage(Filter):
                 for p in sg.get(perm_type, []):
                     for g in p.get('UserIdGroupPairs', ()):
                         sg_ids.add(g['GroupId'])
+        return sg_ids
+
+    def get_ecs_sgs(self):
+        sg_ids = set()
+        for event_rule_target in self.manager.get_resource_manager('event-rule-target').resources():
+            if 'EcsParameters' in event_rule_target:
+                ecs_parameters = event_rule_target.get('EcsParameters', {})
+                network_configuration = ecs_parameters.get('NetworkConfiguration', {})
+                awsvpc_configuration = network_configuration.get('awsvpcConfiguration', {})
+                security_groups = awsvpc_configuration.get('SecurityGroups', [])
+                for g in security_groups:
+                    sg_ids.add(g)
         return sg_ids
 
 
