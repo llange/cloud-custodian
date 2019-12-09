@@ -671,7 +671,7 @@ class ScheduleParserTest(BaseTest):
         for value, expected in self.table_intercepted_schedule:
             i = instance(Tags=[{"Key": "maid_offhours", "Value": value}])
             mocked_match.reset_mock()
-            result = off(i)
+            off(i)
             mocked_match.assert_called_once_with(mock.ANY, expected)
 
     def test_offhours_skip(self):
