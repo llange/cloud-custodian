@@ -1126,7 +1126,7 @@ class SecurityGroupTest(BaseTest):
         )
 
     def test_unused_ecs(self):
-        factory = self.record_flight_data("test_security_group_ecs_unused")
+        factory = self.replay_flight_data("test_security_group_ecs_unused")
         p = self.load_policy(
             {'name': 'sg-xyz',
              'source': 'config',
