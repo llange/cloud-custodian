@@ -782,7 +782,10 @@ class UnusedSecurityGroup(SGUsage):
     lambdas as they may not have extant resources in the vpc at a
     given moment. We also find any security group with references from
     other security group either within the vpc or across peered
-    connections.
+    connections. Also checks cloud watch event targeting ecs.
+
+    Checks - enis, lambda, launch-configs, sg rule refs, and ecs cwe
+    targets.
 
     Note this filter does not support classic security groups atm.
 
@@ -795,6 +798,7 @@ class UnusedSecurityGroup(SGUsage):
                 resource: security-group
                 filters:
                   - unused
+
     """
     schema = type_schema('unused')
 
