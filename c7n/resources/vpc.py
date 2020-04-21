@@ -705,15 +705,18 @@ class SGUsage(Filter):
             "%d of %d groups w/ peered refs", len(peered_ids), len(resources))
         return [r for r in resources if r['GroupId'] not in peered_ids]
 
+    def get_scanners(self):
+        return (
+            ("nics", self.get_eni_sgs),
+            ("sg-perm-refs", self.get_sg_refs),
+            ('lambdas', self.get_lambda_sgs),
+            ("launch-configs", self.get_launch_config_sgs),
+            ("ecs-cwe", self.get_ecs_cwe_sgs)
+        )
+
     def scan_groups(self):
         used = set()
-        for kind, scanner in (
-                ("nics", self.get_eni_sgs),
-                ("sg-perm-refs", self.get_sg_refs),
-                ('lambdas', self.get_lambda_sgs),
-                ("launch-configs", self.get_launch_config_sgs),
-                ("ecs-periodic", self.get_ecs_periodic_sgs),
-        ):
+        for kind, scanner in self.get_scanners():
             sg_ids = scanner()
             new_refs = sg_ids.difference(used)
             used = used.union(sg_ids)
@@ -759,16 +762,14 @@ class SGUsage(Filter):
                         sg_ids.add(g['GroupId'])
         return sg_ids
 
-    def get_ecs_periodic_sgs(self):
+    def get_ecs_cwe_sgs(self):
         sg_ids = set()
-        for event_rule_target in self.manager.get_resource_manager('event-rule-target').resources():
-            if 'EcsParameters' in event_rule_target:
-                ecs_parameters = event_rule_target.get('EcsParameters', {})
-                network_configuration = ecs_parameters.get('NetworkConfiguration', {})
-                awsvpc_configuration = network_configuration.get('awsvpcConfiguration', {})
-                security_groups = awsvpc_configuration.get('SecurityGroups', [])
-                for g in security_groups:
-                    sg_ids.add(g)
+        expr = jmespath.compile(
+            'EcsParameters.NetworkConfiguration.awsvpcConfiguration.SecurityGroups[]')
+        for rule in self.manager.get_resource_manager('event-rule-target').resources():
+            ids = expr.search(rule)
+            if ids:
+                sg_ids.update(ids)
         return sg_ids
 
 
